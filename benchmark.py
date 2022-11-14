@@ -23,13 +23,18 @@ with strategy.scope():
 
 infer_face_pose = InferFacePose(model, im_size)
 
-route = 'sample'
-out_route = 'predict'
+route = 'dataset'
+out_route = 'benchmark'
 
 try:
     os.mkdir(out_route)
 except:
     pass
+
+x_dis = []
+y_dis = []
+z_dis = []
+dists = []
 
 for file in os.listdir(route):
     file_path = os.path.join(route, file)
@@ -49,10 +54,40 @@ for file in os.listdir(route):
     # marks: (68, 2) marks of face pose
 
     img_write = np.array(img)[...,::-1] * 255
-
     # class_text = f'mask prob: {round(mask_prob,2)}'
     class_text = f'{round(mask_prob,2)} {int(ang_vertical)} {int(ang_horizon)} {int(ang_rot)}'
     img_write = draw_marks(img_write, marks, class_text)
     cv2.imwrite(f"./{out_route}/{file}", img_write)
 
-    print("Name, x, y, z:", file, ang_vertical, ang_horizon, ang_rot)
+    # print("Name, x, y, z:", file, ang_vertical, ang_horizon, ang_rot)
+
+    x_dis.append(abs(ang_vertical))
+    y_dis.append(abs(ang_horizon))
+    z_dis.append(abs(ang_rot))
+
+    dists.append((abs(ang_vertical) + abs(ang_horizon) + abs(ang_rot)) / 3)
+
+def describe(arrs, names):
+    with open('benchmark.txt', 'w') as f:
+        f.write('name,mean,median,min,max,range,variance,sd,per25,per50,per75\n')
+        print(('name,mean,median,min,max,range,variance,sd,per25,per50,per75\n'))
+
+        for i, arr in enumerate(arrs):
+            _name = names[i]
+            _mean = np.mean(arr)
+            _median = np.median(arr)
+            _min = np.amin(arr)
+            _max = np.amax(arr)
+            _range = np.ptp(arr)
+            _variance = np.var(arr)
+            _sd = np.std(arr)
+            _per25 = np.percentile(arr, 25)
+            _per50 = np.percentile(arr, 50)
+            _per75 = np.percentile(arr, 75)
+
+            f.write(f'{_name},{_mean},{_median},{_min},{_max},{_range},{_variance},{_sd},{_per25},{_per50},{_per75}\n')
+            print(f'{_name},{_mean},{_median},{_min},{_max},{_range},{_variance},{_sd},{_per25},{_per50},{_per75}\n')
+            
+list_des = [x_dis, y_dis, z_dis, dists]
+names = ['x', 'y', 'z', 'all']
+describe(list_des, names)
